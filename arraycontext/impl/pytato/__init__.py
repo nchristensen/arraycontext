@@ -517,6 +517,58 @@ class PytatoPyOpenCLArrayContext(_BasePytatoArrayContext):
                                        target=self.get_target())
             pt_prg = pt_prg.with_transformed_program(self.transform_loopy_program)
             self._freeze_prg_cache[normalized_expr] = pt_prg
+
+            ### Start new code
+
+            # Pickle program and (index) arguments here 
+            # Hacky way, look for integer arrays
+
+            # After this is where the feinsum transformations come into play
+            # try to dump the kernels here.
+            ## Actually, now doing the dumping in array-context
+            print("===================HERE================")
+            t_unit = pt_prg.program
+            print(t_unit)
+            import os
+            from os.path import exists
+            from hashlib import md5
+            import pickle
+
+            def unique_program_id(program):
+
+                ep = program.default_entrypoint
+                domains = ep.domains
+                instr = [str(entry) for entry in ep.instructions]
+                args = ep.args
+                name = ep.name
+
+                dstr = md5(str(domains).encode()).hexdigest()
+                istr = md5(str(instr).encode()).hexdigest()
+                astr = md5(str(args).encode()).hexdigest()
+                nstr = md5(name.encode()).hexdigest()
+                identifier = nstr[:4] + dstr[:4] + istr[:4] + astr[:4]
+
+                return identifier
+
+            pid = unique_program_id(t_unit)
+            filename = "./pickled_programs"
+            file_path = f"{filename}/{pid}.pickle"
+            if not exists(file_path):
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
+                out_file = open(file_path, "wb")
+                arguments = []
+                for entry in bound_arguments.items():
+                    if np.issubdtype(entry[1].dtype, np.integer):
+                        arguments.append((entry[0], entry[1].get(),))
+                pickle.dump((t_unit, tuple(arguments),), out_file)
+                #pickle.dump(t_unit, out_file)
+
+                out_file.close()
+
+
+            ### End new code
+
+
         else:
             transformed_dag, function_name = (
                     self._dag_transform_cache[normalized_expr])
