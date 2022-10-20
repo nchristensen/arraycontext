@@ -524,7 +524,7 @@ class PytatoPyOpenCLArrayContext(_BasePytatoArrayContext):
             # Hacky way, look for integer arrays
 
             # After this is where the feinsum transformations come into play
-            # try to dump the kernels here.
+            # try tump the kernels here.
             ## Actually, now doing the dumping in array-context
             print("===================HERE================")
             t_unit = pt_prg.program
@@ -534,21 +534,13 @@ class PytatoPyOpenCLArrayContext(_BasePytatoArrayContext):
             from hashlib import md5
             import pickle
 
-            def unique_program_id(program):
-
-                ep = program.default_entrypoint
-                domains = ep.domains
-                instr = [str(entry) for entry in ep.instructions]
-                args = ep.args
-                name = ep.name
-
-                dstr = md5(str(domains).encode()).hexdigest()
-                istr = md5(str(instr).encode()).hexdigest()
-                astr = md5(str(args).encode()).hexdigest()
-                nstr = md5(name.encode()).hexdigest()
-                identifier = nstr[:4] + dstr[:4] + istr[:4] + astr[:4]
-
-                return identifier
+            def unique_program_id(tunit):
+                from loopy.tools import LoopyKeyBuilder
+                kb = LoopyKeyBuilder()
+                # The program name is not relevant for transformation purposes. 
+                # (Neither are the variable names, but I'm not going to touch that)
+                assert len(tunit.entrypoints) == 1 # Only works for tunits with one entrypoint at present
+                return kb(tunit.default_entrypoint)
 
             pid = unique_program_id(t_unit)
             filename = "./pickled_programs"
