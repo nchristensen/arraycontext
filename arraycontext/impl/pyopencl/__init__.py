@@ -279,7 +279,9 @@ class PyOpenCLArrayContext(ArrayContext):
         for arg in t_unit.default_entrypoint.args:
             if arg.name in kwargs and hasattr(arg, "shape"):
                 param_dict.update(zip([str(entry) for entry in arg.shape], kwargs[arg.name].shape))      
-         
+        
+        del param_dict["nunit_dofs_tgt"]
+ 
         t_unit = lp.fix_parameters(t_unit, **param_dict)
 
         try:
