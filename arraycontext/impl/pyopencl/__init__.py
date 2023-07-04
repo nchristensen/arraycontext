@@ -274,7 +274,7 @@ class PyOpenCLArrayContext(ArrayContext):
         #arg_dict = {arg.name: arg for arg in t_unit.default_entrypoint.args}
         #dtypes = {name: arg.dtype for name, arg in kwargs.items() if name in arg_dict and hasattr(arg,"dtype")}
         dtypes = {name: arg.dtype for name, arg in kwargs.items() if hasattr(arg,"dtype")}
-        new_t_unit = lp.add_dtypes(t_unit, dtypes)
+        new_t_unit = lp.add_and_infer_dtypes(t_unit, dtypes)
 
         param_dict = {}
         for arg in t_unit.default_entrypoint.args:
