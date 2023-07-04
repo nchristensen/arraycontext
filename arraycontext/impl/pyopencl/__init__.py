@@ -270,12 +270,14 @@ class PyOpenCLArrayContext(ArrayContext):
 
         # Need to know the dtypes and sizes to autotune    
         import loopy as lp
-        dtypes = {name: arg.dtype for name, arg in kwargs.items()}
+        #arg_dict = {arg.name: arg for arg in t_unit.default_entrypoint.args}
+        #dtypes = {name: arg.dtype for name, arg in kwargs.items() if name in arg_dict and hasattr(arg,"dtype")}
+        dtypes = {name: arg.dtype for name, arg in kwargs.items() if hasattr(arg,"dtype")}
         t_unit = lp.add_dtypes(t_unit, dtypes)
 
         param_dict = {}
         for arg in t_unit.default_entrypoint.args:
-            if arg.name in kwargs:
+            if arg.name in kwargs and hasattr(arg, "shape"):
                 param_dict.update(zip([str(entry) for entry in arg.shape], kwargs[arg.name].shape))      
          
         t_unit = lp.fix_parameters(t_unit, **param_dict)
