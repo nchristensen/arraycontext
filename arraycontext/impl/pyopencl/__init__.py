@@ -271,6 +271,21 @@ class PyOpenCLArrayContext(ArrayContext):
             t_unit = self._loopy_transform_cache[t_unit]
         except KeyError:
             orig_t_unit = t_unit
+
+            # Fix the parameters
+            shape_map = {}
+            for arg in t_unit.default_entrypoint.args:
+                if hasattr(arg, "shape") and arg.name in kwargs:
+                    shape_map.update(zip([str(var) for var in arg.shape], kwargs[arg.name].shape))
+
+            for key, val in shape_map.items():
+                # The parameter is already fixed.
+                if str(key) == str(val):
+                    del shape_map[key]
+
+            import loopy as lp
+            t_unit = lp.fix_parameters(t_unit, **shape_map)
+            
             t_unit = self.transform_loopy_program(t_unit)
             self._loopy_transform_cache[orig_t_unit] = t_unit
             del orig_t_unit
