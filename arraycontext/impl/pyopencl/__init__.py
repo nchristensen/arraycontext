@@ -267,6 +267,31 @@ class PyOpenCLArrayContext(ArrayContext):
         return self._rec_map_container(_tag_axis, array)
 
     def call_loopy(self, t_unit, **kwargs):
+
+        # Need to know the dtypes and sizes to autotune    
+        #if t_unit.default_entrypoint.name != "resample_by_picking_group":
+        import loopy as lp
+        #arg_dict = {arg.name: arg for arg in t_unit.default_entrypoint.args}
+        #dtypes = {name: arg.dtype for name, arg in kwargs.items() if name in arg_dict and hasattr(arg,"dtype")}
+        dtypes = {name: arg.dtype for name, arg in kwargs.items() if hasattr(arg,"dtype")}
+        new_t_unit = lp.add_and_infer_dtypes(t_unit, dtypes)
+
+        param_dict = {}
+        for arg in t_unit.default_entrypoint.args:
+            if arg.name in kwargs and hasattr(arg, "shape"):
+                param_dict.update(zip([str(entry) for entry in arg.shape], kwargs[arg.name].shape))      
+
+        # Causes some problems with arg_to_dtype
+        #if "nunit_dofs_tgt" in param_dict:
+        #    del param_dict["nunit_dofs_tgt"]
+
+        # Breaks a lot. Just see if we can dump all the kernels.
+        new_t_unit = lp.fix_parameters(new_t_unit, **param_dict)
+        new_t_unit = self.transform_loopy_program(new_t_unit)
+
+        # Basically, we can generate the kernels with the fixed parameters,
+        # but using them creates problems elsewhere.
+    
         try:
             t_unit = self._loopy_transform_cache[t_unit]
         except KeyError:
