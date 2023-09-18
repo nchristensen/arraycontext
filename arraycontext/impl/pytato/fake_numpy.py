@@ -93,7 +93,7 @@ class PytatoFakeNumpyNamespace(LoopyBasedFakeNumpyNamespace):
 
     def full_like(self, ary, fill_value):
         def _full_like(subary):
-            return fill_value * (0*ary + 1)
+            return fill_value * (0*subary + 1)
 
         return self._array_context._rec_map_container(
             _full_like, ary, default_scalar=fill_value)
@@ -165,7 +165,7 @@ class PytatoFakeNumpyNamespace(LoopyBasedFakeNumpyNamespace):
         false = actx.from_numpy(np.int8(False))
 
         def rec_equal(x, y):
-            if type(x) != type(y):
+            if type(x) is not type(y):
                 return false
 
             try:

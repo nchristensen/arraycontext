@@ -299,58 +299,36 @@ class PyOpenCLArrayContext(ArrayContext):
         cache_key = (t_unit, dtypes, shapes)
 
         try:
-            t_unit = self._loopy_transform_cache[t_unit]
-            #t_unit = self._loopy_transform_cache[cache_key]
+            #executor = self._loopy_transform_cache[t_unit]
+            executor = self._loopy_transform_cache[cache_key]
         except KeyError:
-            orig_t_unit = t_unit
-
             import loopy as lp
-            # Fix the dtypes. Raises a strange error in pytools/py_codegen.py, even if
-            # "actx_special_abs" is not transformed.
-            #dtypes = {name: arg.dtype for name, arg in kwargs.items() if hasattr(arg,"dtype")}
 
-            #if t_unit.default_entrypoint.name not in {"actx_special_abs"}:
-            #print(t_unit.default_entrypoint.name, dtypes)
-                #t_unit = lp.add_and_infer_dtypes(t_unit, dict(dtypes))
-            # This fails because the wrong because the tunits also need to be cached by arg sizes and dtypes
-            # Fix the parameters
-            #"""
-
-            """
-            print(t_unit)
             shape_map = {}
             for arg in t_unit.default_entrypoint.args:
                 if hasattr(arg, "shape") and arg.name in kwargs:
                     pairs = zip([str(var) for var in arg.shape], kwargs[arg.name].shape)
                     for key, val in pairs:
                         if str(key) != str(val):
-                            if key not in shape_map:
-                                shape_map[key] = val
-                            elif shape_map[key] < val:
-                                shape_map[key] = val
+                            shape_map[key] = val
 
-            print(shape_map)
-            """
-            #for key, val in shape_map.items():
-                # The parameter is already fixed.
-                #if str(key) == str(val):
-                #    del shape_map[key]
+            t_unit = lp.add_and_infer_dtypes(t_unit, dict(dtypes))
+            t_unit = lp.fix_parameters(t_unit, **dict(shape_map))
 
-            #t_unit = lp.fix_parameters(t_unit, **dict(shapes))
-            
-            t_unit = self.transform_loopy_program(t_unit)
-            self._loopy_transform_cache[orig_t_unit] = t_unit
-            #self._loopy_transform_cache[cache_key] = t_unit
-            del orig_t_unit
-            #"""
 
-        #for key, val in kwargs.items():
-        #    print(key, val)
-        #    print(val.shape)
-        evt, result = t_unit(self.queue, **kwargs, allocator=self.allocator)
+            executor = self.transform_loopy_program(t_unit).executor(self.context)
+            self._loopy_transform_cache[cache_key] = executor
+            #self._loopy_transform_cache[orig_t_unit] = executor
+            #del orig_t_unit
+
+        arg_names = {arg.name for arg in executor.t_unit.default_entrypoint.args}
+        new_kwargs = {key: val for key, val in kwargs.items() if key in arg_names}
+        evt, result = executor(self.queue, **new_kwargs, allocator=self.allocator)
+
+        #evt, result = executor(self.queue, **kwargs, allocator=self.allocator)
 
         if self._wait_event_queue_length is not False:
-            prg_name = t_unit.default_entrypoint.name
+            prg_name = executor.t_unit.default_entrypoint.name
             wait_event_queue = self._kernel_name_to_wait_event_queue.setdefault(
                     prg_name, [])
 
